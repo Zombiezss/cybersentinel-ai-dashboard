@@ -1,0 +1,17 @@
+[project]
+name = "cybersentinel-env"
+version = "1.0.0"
+description = "AI-powered cybersecurity incident response simulation"
+authors = [{ name = "Anil" }]
+
+dependencies = [
+    "openenv>=0.1.13",
+    "fastapi",
+    "uvicorn"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.openenv]
+entry_point = "backend.environment:IncidentEnv"

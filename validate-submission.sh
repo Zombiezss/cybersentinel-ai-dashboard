@@ -1,0 +1,1 @@
+bash validate-submission.sh https://your-space.hf.space

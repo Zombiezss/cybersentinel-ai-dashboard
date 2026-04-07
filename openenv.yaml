@@ -1,0 +1,44 @@
+name: cybersentinel-env
+version: 1.0
+description: AI-powered cybersecurity incident response simulation
+
+entry_point: backend.environment:IncidentEnv
+
+max_steps: 5
+
+observation_space:
+  type: object
+  properties:
+    cpu:
+      type: integer
+    memory:
+      type: integer
+    errors:
+      type: integer
+    logs:
+      type: string
+
+action_space:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - scale_up
+        - restart_service
+        - block_ip
+
+reward_range: [-1.0, 1.0]
+
+tasks:
+  - name: easy
+    scenario: cpu_overload
+    difficulty: easy
+
+  - name: medium
+    scenario: memory_leak
+    difficulty: medium
+
+  - name: hard
+    scenario: ddos_attack
+    difficulty: hard
