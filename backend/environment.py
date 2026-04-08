@@ -4,15 +4,18 @@ from openai import OpenAI
 from .models import Observation, Action, StepResult
 
 
-# ✅ CORRECT LLM CLIENT (MANDATORY FOR HACKATHON)
-client = OpenAI(
-    base_url=os.environ["API_BASE_URL"],
-    api_key=os.environ["API_KEY"]
-)
+# ✅ SAFE: create client ONLY when needed
+def get_client():
+    return OpenAI(
+        api_key=os.environ.get("API_KEY"),
+        base_url=os.environ.get("API_BASE_URL")
+    )
 
 
 def call_llm(prompt):
     try:
+        client = get_client()  # ✅ moved here (fixes crash)
+
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -20,6 +23,7 @@ def call_llm(prompt):
             ]
         )
         return response.choices[0].message.content
+
     except Exception:
         return None  # fallback
 
@@ -111,7 +115,7 @@ class IncidentEnv:
 
         self.steps += 1
 
-        # 🔥 LLM decision
+        # 🔥 LLM decision (now safe)
         llm_action = decide_action_with_llm(self.state_data)
 
         if llm_action:
@@ -129,7 +133,7 @@ class IncidentEnv:
             "ddos_attack": "block_ip"
         }
 
-        # ✅ Apply action effects (UNCHANGED)
+        # ✅ Apply action effects
         if action_type == correct_actions[self.root_cause]:
 
             self.state_data["errors"] = max(0, self.state_data["errors"] - 150)

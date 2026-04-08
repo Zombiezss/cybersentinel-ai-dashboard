@@ -8,11 +8,13 @@ dependencies = [
     "openenv>=0.1.13",
     "fastapi",
     "uvicorn",
-    "pydantic"
+    "pydantic",
+    "openai"
 ]
 
 [project.scripts]
 server = "server.app:main"
 
 [tool.openenv]
+mode = "multi"
 entry_point = "backend.environment:IncidentEnv"
