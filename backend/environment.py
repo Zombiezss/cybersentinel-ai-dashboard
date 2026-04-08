@@ -14,7 +14,7 @@ def get_client():
 
 def call_llm(prompt):
     try:
-        client = get_client()  # ✅ moved here (fixes crash)
+        client = get_client()
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -25,7 +25,7 @@ def call_llm(prompt):
         return response.choices[0].message.content
 
     except Exception:
-        return None  # fallback
+        return None
 
 
 def decide_action_with_llm(state):
@@ -52,7 +52,7 @@ Only return the action name.
         if result in ["scale_up", "restart_service", "block_ip"]:
             return result
 
-    return None  # fallback if LLM fails
+    return None
 
 
 class IncidentEnv:
@@ -86,7 +86,7 @@ class IncidentEnv:
                 "logs": "Memory leak suspected"
             }
 
-        else:  # ddos_attack
+        else:
             self.state_data = {
                 "cpu": 85,
                 "memory": 75,
@@ -100,7 +100,7 @@ class IncidentEnv:
 
         return StepResult(
             observation=Observation(**self.state_data),
-            reward=0.0,
+            reward=0.5,  # ✅ MUST NOT be 0.0
             done=False,
             info={"scenario": self.root_cause}
         )
@@ -115,17 +115,16 @@ class IncidentEnv:
 
         self.steps += 1
 
-        # 🔥 LLM decision (now safe)
         llm_action = decide_action_with_llm(self.state_data)
 
         if llm_action:
             action_type = llm_action
         else:
-            action_type = action.action  # fallback
+            action_type = action.action
 
         self.last_action = action_type
 
-        reward = 0.0
+        reward = 0.5  # ✅ default valid value
 
         correct_actions = {
             "cpu_overload": "scale_up",
@@ -133,7 +132,7 @@ class IncidentEnv:
             "ddos_attack": "block_ip"
         }
 
-        # ✅ Apply action effects
+        # ✅ Correct action
         if action_type == correct_actions[self.root_cause]:
 
             self.state_data["errors"] = max(0, self.state_data["errors"] - 150)
@@ -141,24 +140,27 @@ class IncidentEnv:
             self.state_data["memory"] = max(0, self.state_data["memory"] - 20)
 
             if self.state_data["errors"] == 0:
-                reward = 1.0
+                reward = 0.99   # ✅ NOT 1.0
                 self.done = True
                 self.state_data["logs"] = "🎉 System recovered"
             else:
                 reward = 0.85
                 self.state_data["logs"] = f"✅ Correct action: {action_type}"
 
+        # ❌ Wrong action → but keep > 0
         else:
             self.state_data["errors"] += 20
-            reward = -0.5
+            reward = 0.1   # ✅ NOT 0.0
             self.state_data["logs"] = f"❌ Wrong action: {action_type}"
 
+        # Max steps
         if self.steps >= self.max_steps and not self.done:
             self.done = True
-            reward -= 0.5
+            reward = max(0.01, reward - 0.2)
             self.state_data["logs"] = "⚠️ Max steps reached"
 
-        reward = max(-1.0, min(1.0, reward))
+        # ✅ STRICT RANGE (0,1)
+        reward = max(0.01, min(0.99, reward))
 
         return StepResult(
             observation=Observation(**self.state_data),
@@ -174,7 +176,7 @@ class IncidentEnv:
     def state(self):
         return StepResult(
             observation=Observation(**self.state_data),
-            reward=0.0,
+            reward=0.5,  # ✅ NOT 0.0
             done=self.done,
             info={
                 "steps": self.steps,
