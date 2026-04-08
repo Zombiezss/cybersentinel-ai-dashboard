@@ -1,5 +1,61 @@
 import random
+import os
+import requests
 from .models import Observation, Action, StepResult
+
+
+# 🔹 LLM CONFIG
+API_BASE_URL = os.getenv("API_BASE_URL")
+API_KEY = os.getenv("API_KEY")
+
+
+def call_llm(prompt):
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ]
+            },
+            timeout=5
+        )
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+    except Exception:
+        return None  # fallback handled later
+
+
+def decide_action_with_llm(state):
+    prompt = f"""
+You are a cybersecurity agent.
+
+System state:
+CPU: {state['cpu']}
+Memory: {state['memory']}
+Errors: {state['errors']}
+Logs: {state['logs']}
+
+Choose ONE action from:
+scale_up, restart_service, block_ip
+
+Only return the action name.
+"""
+
+    result = call_llm(prompt)
+
+    if result:
+        result = result.strip().lower()
+
+        if result in ["scale_up", "restart_service", "block_ip"]:
+            return result
+
+    return None  # fallback if LLM fails
 
 
 class IncidentEnv:
@@ -61,7 +117,16 @@ class IncidentEnv:
             raise ValueError("Action must be provided")
 
         self.steps += 1
-        action_type = action.action
+
+        # 🔥 Try LLM decision first
+        llm_action = decide_action_with_llm(self.state_data)
+
+        if llm_action:
+            action_type = llm_action
+        else:
+            # fallback to original logic
+            action_type = action.action
+
         self.last_action = action_type
 
         reward = 0.0
@@ -72,10 +137,9 @@ class IncidentEnv:
             "ddos_attack": "block_ip"
         }
 
-        # ✅ Apply action effects (IMPROVED REWARD LOGIC)
+        # ✅ Apply action effects (UNCHANGED)
         if action_type == correct_actions[self.root_cause]:
 
-            # Faster recovery (improves efficiency score)
             self.state_data["errors"] = max(0, self.state_data["errors"] - 150)
             self.state_data["cpu"] = max(0, self.state_data["cpu"] - 20)
             self.state_data["memory"] = max(0, self.state_data["memory"] - 20)
@@ -85,7 +149,7 @@ class IncidentEnv:
                 self.done = True
                 self.state_data["logs"] = "🎉 System recovered"
             else:
-                reward = 0.85  # strong intermediate reward
+                reward = 0.85
                 self.state_data["logs"] = f"✅ Correct action: {action_type}"
 
         else:
@@ -93,7 +157,6 @@ class IncidentEnv:
             reward = -0.5
             self.state_data["logs"] = f"❌ Wrong action: {action_type}"
 
-        # ✅ Max steps condition (unchanged behavior)
         if self.steps >= self.max_steps and not self.done:
             self.done = True
             reward -= 0.5
