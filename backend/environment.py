@@ -1,34 +1,27 @@
 import random
 import os
-import requests
+from openai import OpenAI
 from .models import Observation, Action, StepResult
 
 
-# 🔹 LLM CONFIG
-API_BASE_URL = os.getenv("API_BASE_URL")
-API_KEY = os.getenv("API_KEY")
+# ✅ CORRECT LLM CLIENT (MANDATORY FOR HACKATHON)
+client = OpenAI(
+    base_url=os.environ["API_BASE_URL"],
+    api_key=os.environ["API_KEY"]
+)
 
 
 def call_llm(prompt):
     try:
-        response = requests.post(
-            f"{API_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ]
-            },
-            timeout=5
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
         )
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
     except Exception:
-        return None  # fallback handled later
+        return None  # fallback
 
 
 def decide_action_with_llm(state):
@@ -118,14 +111,13 @@ class IncidentEnv:
 
         self.steps += 1
 
-        # 🔥 Try LLM decision first
+        # 🔥 LLM decision
         llm_action = decide_action_with_llm(self.state_data)
 
         if llm_action:
             action_type = llm_action
         else:
-            # fallback to original logic
-            action_type = action.action
+            action_type = action.action  # fallback
 
         self.last_action = action_type
 
