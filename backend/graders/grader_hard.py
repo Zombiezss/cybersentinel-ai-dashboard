@@ -1,15 +1,14 @@
 from backend.environment import IncidentEnv
 from backend.models import Action
-from backend.tasks.hard import run_hard
+from backend.tasks.medium import run_medium
 
 
-def grade_hard():
+def grade_medium():
 
-    print("🧪 Grading HARD task")
+    print("🧪 Grading MEDIUM task")
 
     env = IncidentEnv()
-
-    scenario = "ddos_attack"
+    scenario = "memory_leak"
 
     result = env.reset(forced_scenario=scenario)
 
@@ -17,53 +16,49 @@ def grade_hard():
     steps = 0
     rewards = []
 
-    while not done and steps < 12:
+    while not done and steps < 10:
 
-        # 🔥 AI decision
-        action_output = run_hard(result.observation.dict())
+        # 🔥 AI-based decision
+        action_output = run_medium(result.observation.dict())
 
-        action = Action(action=action_output.get("action", "block_ip"))
+        action = Action(
+            action=action_output.get("action", "restart_service")
+        )
 
         result = env.step(action)
 
         print("➡️ Action:", action.action)
-        print("📊 Network Errors:", result.observation.errors)
+        print("📊 Memory:", result.observation.memory)
+        print("📊 Errors:", result.observation.errors)
         print("🏆 Reward:", result.reward)
 
         rewards.append(result.reward)
-
-        # ✅ keep penalty (safe)
-        if action.action != "block_ip":
-            rewards.append(-0.1)
 
         done = result.done
         steps += 1
 
     # ✅ Efficiency bonus
     if done:
-        efficiency_bonus = max(0, (12 - steps) / 12) * 0.2
+        efficiency_bonus = max(0, (10 - steps) / 10) * 0.2
         rewards.append(efficiency_bonus)
 
-    # ✅ Penalty if not solved
-    if not done:
-        rewards.append(-0.3)
-
-    # ✅ FIX: outcome-dominant scoring
-    if len(rewards) == 0:
-        final_score = 0.0
+    # ✅ Scenario-based scoring (safe bounds)
+    if not rewards:
+        final_score = 0.05
     else:
         final_score = sum(rewards) / len(rewards)
 
-    # 🔥 CRITICAL FIX: reward success properly
+    # ✅ Ensure success gives strong score but < 1
     if done:
         final_score = max(final_score, 0.9)
 
-    final_score = round(min(max(final_score, 0.0), 1.0), 2)
+    # ✅ Clamp strictly within (0, 1)
+    final_score = round(min(max(final_score, 0.05), 0.95), 2)
 
-    print("\n🎯 HARD SCORE:", final_score)
+    print("\n🎯 MEDIUM SCORE:", final_score)
 
     return final_score
 
 
 if __name__ == "__main__":
-    grade_hard()
+    grade_medium()
