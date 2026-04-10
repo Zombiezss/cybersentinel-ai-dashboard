@@ -42,7 +42,7 @@ def grade_medium():
         efficiency_bonus = max(0, (10 - steps) / 10) * 0.2
         rewards.append(efficiency_bonus)
 
-    # ✅ Scenario-based scoring (safe bounds)
+    # ✅ Scenario-based scoring
     if not rewards:
         final_score = 0.05
     else:
@@ -52,7 +52,7 @@ def grade_medium():
     if done:
         final_score = max(final_score, 0.9)
 
-    # ✅ Clamp strictly within (0, 1)
+    # ✅ Clamp strictly within (0,1)
     final_score = round(min(max(final_score, 0.05), 0.95), 2)
 
     print("\n🎯 MEDIUM SCORE:", final_score)
