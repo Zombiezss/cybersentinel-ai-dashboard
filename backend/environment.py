@@ -4,17 +4,11 @@ from openai import OpenAI
 from .models import Observation, Action, StepResult
 
 
-# ✅ FIXED: enforce API usage (no silent failure)
+# ✅ FINAL FIX: strict environment usage (REQUIRED for validator)
 def get_client():
-    api_key = os.environ.get("API_KEY")
-    base_url = os.environ.get("API_BASE_URL")
-
-    if not api_key or not base_url:
-        raise ValueError("Missing API_KEY or API_BASE_URL")
-
     return OpenAI(
-        api_key=api_key,
-        base_url=base_url
+        api_key=os.environ["API_KEY"],
+        base_url=os.environ["API_BASE_URL"]
     )
 
 
@@ -113,7 +107,7 @@ class IncidentEnv:
 
         return StepResult(
             observation=Observation(**self.state_data),
-            reward=0.5,  # ✅ not 0
+            reward=0.5,
             done=False,
             info={"scenario": self.root_cause}
         )
@@ -173,7 +167,7 @@ class IncidentEnv:
             reward = max(0.01, reward - 0.2)
             self.state_data["logs"] = "⚠️ Max steps reached"
 
-        # ✅ strict bounds (0,1)
+        # ✅ STRICT bounds (0,1)
         reward = max(0.01, min(0.99, reward))
 
         return StepResult(
