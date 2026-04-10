@@ -35,7 +35,7 @@ def state():
 
 def main():
     uvicorn.run(
-        "server.app:app",
+        "backend.app:app",   # ✅ FIXED (only change)
         host="0.0.0.0",
         port=7860
     )
