@@ -40,22 +40,23 @@ def grade_easy():
             done = result.done
             steps += 1
 
-        # ✅ FIXED: outcome-based scoring (NO averaging issue)
+        # ✅ FIXED: keep score strictly between (0,1)
         if done:
             efficiency_bonus = max(0, (10 - steps) / 10) * 0.2
-            scenario_score = min(1.0, 0.8 + efficiency_bonus)
+            scenario_score = min(0.95, 0.8 + efficiency_bonus)   # ✅ was 1.0
         else:
-            scenario_score = 0.0
+            scenario_score = 0.05   # ✅ was 0.0
 
         scenario_scores.append(scenario_score)
 
     # ✅ FINAL SCORE
     if len(scenario_scores) == 0:
-        final_score = 0.0
+        final_score = 0.05   # ✅ was 0.0
     else:
         final_score = sum(scenario_scores) / len(scenario_scores)
 
-    final_score = round(min(max(final_score, 0.0), 1.0), 2)
+    # ✅ clamp strictly between (0,1)
+    final_score = round(min(max(final_score, 0.05), 0.95), 2)
 
     print("\n📊 Scenario Scores:", [round(s, 2) for s in scenario_scores])
     print("🏁 FINAL NORMALIZED SCORE:", final_score)
